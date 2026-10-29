@@ -1,0 +1,17 @@
+eNSP MCP portable package
+=========================
+
+Upstream source:
+  https://github.com/llz-2002/ensptomcpfortrae
+  Author: llz-2002
+
+This package adds:
+  - 32-bit build: Python 3.11.9 (32-bit) + PyInstaller 6.22.3
+  - PyInstaller single-file packaging (no Python required on the target PC)
+  - embedded Web server and stdio MCP server in one process
+  - UTF-8 stdio and localhost proxy fixes
+  - installer, self-check and Chinese documentation
+
+All original code remains the work of the upstream author.
+If the upstream repository publishes a newer version or a license,
+that version and license take precedence.
