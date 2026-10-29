@@ -1,0 +1,11 @@
+toolchain/
+build32/build/
+build32/dist/
+build32/toolchain/
+build64/
+dist64/
+package/
+backup-*/
+*.zip
+__pycache__/
+*.pyc
