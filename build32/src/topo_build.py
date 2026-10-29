@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import random
 import re
 import subprocess
@@ -299,14 +300,29 @@ def find_ensp_exe() -> Path | None:
 
 
 def open_in_ensp(path: str | Path) -> dict:
+    """用 explorer.exe 交给 shell 打开，避免 eNSP 成为当前命令进程的子进程。
+
+    Claude Code / 终端工具常在 Job Object 里跑命令，命令结束会连带杀掉子进程。
+    经 explorer 启动的 eNSP 挂在资源管理器下，不会跟着退出。
+    """
     target = Path(path).resolve()
     if not target.exists():
         raise FileNotFoundError("找不到拓扑文件: %s" % target)
+
+    explorer = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "explorer.exe"
+    if explorer.exists():
+        subprocess.Popen([str(explorer), str(target)])
+        return {
+            "opened": str(target),
+            "method": "explorer",
+            "note": "已交给资源管理器启动，eNSP 不会随命令进程退出",
+        }
+
     exe = find_ensp_exe()
     if exe is None:
         raise FileNotFoundError("找不到 eNSP_Client.exe（可先手动双击 .topo 建立关联）")
     proc = subprocess.Popen([str(exe), str(target)], cwd=str(exe.parent))
-    return {"opened": str(target), "pid": proc.pid, "exe": str(exe)}
+    return {"opened": str(target), "method": "direct", "pid": proc.pid, "exe": str(exe)}
 
 
 def app_dir() -> Path:
