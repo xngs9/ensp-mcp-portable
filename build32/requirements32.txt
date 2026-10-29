@@ -9,4 +9,3 @@ pydantic==2.11.7
 rpds-py==0.26.0
 simple-websocket==1.1.0
 wsproto==1.2.0
-pillow==10.4.0
