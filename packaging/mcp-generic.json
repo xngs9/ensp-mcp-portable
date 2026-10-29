@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ensp": {
+      "command": "ensp-mcp",
+      "args": ["--mcp"],
+      "description": "eNSP MCP portable. Upstream: https://github.com/llz-2002/ensptomcpfortrae"
+    }
+  }
+}
