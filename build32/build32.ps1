@@ -45,10 +45,6 @@ try {
         --hidden-import mcp.server.lowlevel `
         --hidden-import mcp.shared.session `
         --hidden-import mcp.server.models `
-        --hidden-import PIL `
-        --hidden-import PIL.Image `
-        --hidden-import PIL.ImageDraw `
-        --hidden-import PIL.ImageFont `
         src\main.py
 } finally {
     Pop-Location
