@@ -7,7 +7,7 @@
 - PyInstaller 单文件打包（win32 / win64）
 - Web 服务和 MCP 服务合并到一个进程
 - 修复 Windows 下 stdio 的 UTF-8 编码、系统代理导致本机 127.0.0.1 请求返回 502 的问题
-- 新增拓扑工具：读取/绘制 `.topo`、按 JSON 生成 eNSP 拓扑并打开
+- 新增拓扑工具：读取/生成 `.topo`、按 JSON 生成 eNSP 拓扑并打开
 
 ## 功能
 
@@ -23,8 +23,6 @@
 | `create_topo` | 按 JSON 生成 eNSP 可直接打开的 `.topo`，`open_ensp=true` 时直接拉起 eNSP |
 | `open_topo` | 用本机 eNSP 打开 `.topo` |
 | `topology_info` | 读取 `.topo`，返回设备/接口/IP/链路摘要 |
-| `draw_topo_file` | 把 `.topo` 画成 SVG（只有调用才生成图片） |
-| `draw_topology` | 把内联 JSON 自动布局画成 SVG |
 | `topology_to_mermaid` | 转 Mermaid 文本 |
 | `list_topo_files` | 列出目录下的 `.topo` |
 
