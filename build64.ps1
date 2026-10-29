@@ -13,7 +13,12 @@ if (-not (Test-Path $py)) {
     New-Item -ItemType Directory -Force -Path (Join-Path $base 'toolchain') | Out-Null
     $zip = Join-Path $base 'toolchain\python-3.11.9-embed-amd64.zip'
     if (-not (Test-Path $zip)) {
-        Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip' -OutFile $zip
+        try {
+            Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip' -OutFile $zip -TimeoutSec 120
+        } catch {
+            Write-Host '[WARN] python.org failed, trying Huawei Cloud mirror...'
+            Invoke-WebRequest -Uri 'https://mirrors.huaweicloud.com/python/3.11.9/python-3.11.9-embed-amd64.zip' -OutFile $zip -TimeoutSec 300
+        }
     }
     Expand-Archive -LiteralPath $zip -DestinationPath $pyDir -Force
     New-Item -ItemType Directory -Force -Path (Join-Path $pyDir 'Lib\site-packages') | Out-Null
