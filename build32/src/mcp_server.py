@@ -47,13 +47,13 @@ mcp_server = Server(MCP_SERVER_NAME)
 # ---------------------------------------------------------------- 本地拓扑工具
 # 不经过 app.py，直接在 MCP 进程内解析/绘图/生成 .topo。
 
-def _topo_output(args: dict, default_name: str, default_fmt: str = "png") -> Path:
+def _topo_output(args: dict, default_name: str, default_fmt: str = "svg") -> Path:
     if args.get("output"):
         return Path(args["output"]).expanduser()
     return OUT_DIR / (default_name + "." + default_fmt)
 
 
-def _fmt(args: dict, default: str = "png") -> str:
+def _fmt(args: dict, default: str = "svg") -> str:
     if args.get("format"):
         return str(args["format"]).lower().lstrip(".")
     if args.get("output"):
@@ -337,13 +337,13 @@ async def list_tools():
         ),
         Tool(
             name="draw_topo_file",
-            description="把 eNSP .topo 自动画成拓扑图（PNG/SVG）。layout=keep 用原坐标，auto 自动分层。",
+            description="把 eNSP .topo 自动画成拓扑图（SVG）。layout=keep 用原坐标，auto 自动分层。",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "path": {"type": "string", "description": ".topo 文件绝对路径"},
                     "output": {"type": "string", "description": "输出路径，扩展名决定格式；默认放 exe 同目录 out\\"},
-                    "format": {"type": "string", "enum": ["png", "svg"]},
+                    "format": {"type": "string", "enum": ["svg"]},
                     "layout": {"type": "string", "enum": ["keep", "auto"], "default": "keep"},
                     "show_ip": {"type": "boolean", "default": True},
                     "show_link_labels": {"type": "boolean", "default": False},
@@ -354,13 +354,13 @@ async def list_tools():
         ),
         Tool(
             name="draw_topology",
-            description="把内联设备/连线 JSON 自动布局并画成图（PNG/SVG）。",
+            description="把内联设备/连线 JSON 自动布局并画成图（SVG）。",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "topology": {"type": "object", "description": "{title,devices:[{name,model,type,x,y,ip}],links:[{src,dst,label}]}"},
                     "output": {"type": "string"},
-                    "format": {"type": "string", "enum": ["png", "svg"]},
+                    "format": {"type": "string", "enum": ["svg"]},
                     "layout": {"type": "string", "enum": ["keep", "auto"], "default": "auto"},
                     "show_ip": {"type": "boolean", "default": True},
                     "show_link_labels": {"type": "boolean", "default": False},
