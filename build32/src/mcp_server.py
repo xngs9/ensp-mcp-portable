@@ -47,54 +47,6 @@ mcp_server = Server(MCP_SERVER_NAME)
 # ---------------------------------------------------------------- 本地拓扑工具
 # 不经过 app.py，直接在 MCP 进程内解析/绘图/生成 .topo。
 
-def _topo_output(args: dict, default_name: str, default_fmt: str = "svg") -> Path:
-    if args.get("output"):
-        return Path(args["output"]).expanduser()
-    return OUT_DIR / (default_name + "." + default_fmt)
-
-
-def _fmt(args: dict, default: str = "svg") -> str:
-    if args.get("format"):
-        return str(args["format"]).lower().lstrip(".")
-    if args.get("output"):
-        return Path(args["output"]).suffix.lower().lstrip(".") or default
-    return default
-
-
-def _draw_topo_file(args: dict) -> dict:
-    path = Path(args["path"]).expanduser()
-    if not path.exists():
-        raise FileNotFoundError("找不到文件: %s" % path)
-    fmt = _fmt(args)
-    output = _topo_output(args, path.stem, fmt)
-    topo = topo_draw.parse_topo(path)
-    result = topo_draw.render_to_file(
-        topo, str(output),
-        layout=args.get("layout") or "keep",
-        show_ip=args.get("show_ip", True),
-        show_link_labels=args.get("show_link_labels", False),
-        title=args.get("title") or None,
-    )
-    result["source"] = str(path)
-    return result
-
-
-def _draw_topology(args: dict) -> dict:
-    data = args.get("topology")
-    if not isinstance(data, dict):
-        raise ValueError("topology 必须是包含 devices / links 的对象")
-    topo = topo_draw.normalize_topology(data)
-    fmt = _fmt(args)
-    output = _topo_output(args, "topology_%d" % int(time.time() * 1000), fmt)
-    return topo_draw.render_to_file(
-        topo, str(output),
-        layout=args.get("layout") or "auto",
-        show_ip=args.get("show_ip", True),
-        show_link_labels=args.get("show_link_labels", False),
-        title=args.get("title") or None,
-    )
-
-
 def _topology_info(args: dict) -> dict:
     path = Path(args["path"]).expanduser()
     topo = topo_draw.parse_topo(path)
@@ -196,12 +148,6 @@ async def mcp_call_tool(name: str, arguments: dict):
         elif name == "save_topology":
             resp = await client.post(f"{SERVER_URL}/api/topology", json=arguments.get("data", {}))
             return [TextContent(type="text", text=resp.text)]
-
-        elif name == "draw_topo_file":
-            return [TextContent(type="text", text=json.dumps(_draw_topo_file(arguments), ensure_ascii=False))]
-
-        elif name == "draw_topology":
-            return [TextContent(type="text", text=json.dumps(_draw_topology(arguments), ensure_ascii=False))]
 
         elif name == "topology_info":
             return [TextContent(type="text", text=json.dumps(_topology_info(arguments), ensure_ascii=False))]
@@ -333,40 +279,6 @@ async def list_tools():
                 "properties": {
                     "data": {"type": "object", "description": "Topology data object to save"}
                 }
-            }
-        ),
-        Tool(
-            name="draw_topo_file",
-            description="把 eNSP .topo 自动画成拓扑图（SVG）。layout=keep 用原坐标，auto 自动分层。",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": ".topo 文件绝对路径"},
-                    "output": {"type": "string", "description": "输出路径，扩展名决定格式；默认放 exe 同目录 out\\"},
-                    "format": {"type": "string", "enum": ["svg"]},
-                    "layout": {"type": "string", "enum": ["keep", "auto"], "default": "keep"},
-                    "show_ip": {"type": "boolean", "default": True},
-                    "show_link_labels": {"type": "boolean", "default": False},
-                    "title": {"type": "string"}
-                },
-                "required": ["path"]
-            }
-        ),
-        Tool(
-            name="draw_topology",
-            description="把内联设备/连线 JSON 自动布局并画成图（SVG）。",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "topology": {"type": "object", "description": "{title,devices:[{name,model,type,x,y,ip}],links:[{src,dst,label}]}"},
-                    "output": {"type": "string"},
-                    "format": {"type": "string", "enum": ["svg"]},
-                    "layout": {"type": "string", "enum": ["keep", "auto"], "default": "auto"},
-                    "show_ip": {"type": "boolean", "default": True},
-                    "show_link_labels": {"type": "boolean", "default": False},
-                    "title": {"type": "string"}
-                },
-                "required": ["topology"]
             }
         ),
         Tool(
