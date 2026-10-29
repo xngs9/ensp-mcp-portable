@@ -1,0 +1,17 @@
+Claude Code, short command (after install.cmd added the folder to PATH and you restarted Claude Code):
+
+  claude mcp add ensp --scope user ensp-mcp
+
+Claude Code, full path (always works, no PATH needed). Replace the path with the real one printed by install.cmd:
+
+  claude mcp add ensp --scope user "%LOCALAPPDATA%\eNSP-MCP\eNSP-MCP.exe"
+
+Check:
+
+  claude mcp list
+  claude mcp get ensp
+
+Why no "--mcp" argument here:
+  Claude Code's "mcp add" command may parse "--mcp" as its own option.
+  The exe detects that its stdin is a pipe and automatically runs in MCP mode,
+  so no argument is needed. Adding ["--mcp"] inside a JSON config file also works.
