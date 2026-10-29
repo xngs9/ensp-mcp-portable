@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-eNSP 拓扑自动绘图：解析 .topo / JSON，自动布局，输出 SVG / PNG / Mermaid。
+eNSP 拓扑自动绘图：解析 .topo / JSON，自动布局，输出 SVG / Mermaid。
 
 不依赖 eNSP 运行，也不下发任何配置，只负责把设备与连线画成图。
 
 命令行示例：
-    python topo_draw.py C:\\Users\\30582\\Desktop\\1\\1.topo -o 1.png
+    python topo_draw.py C:\\Users\\30582\\Desktop\\1\\1.topo -o 1.svg
     python topo_draw.py 1.topo -o 1.svg --layout auto
 """
 
@@ -274,7 +274,7 @@ def _icon(kind: str, stroke: str, fill: str) -> str:
 
 
 def prepare(topo: dict, layout: str = "keep") -> tuple:
-    """统一坐标与画布范围，SVG 和 PNG 共用。"""
+    """统一坐标与画布范围，SVG 共用。"""
     if layout == "auto" or not _has_positions(topo):
         auto_layout(topo)
     else:
@@ -410,189 +410,17 @@ def save_svg(svg: str, out_path: str | os.PathLike) -> str:
     return str(out)
 
 
-def _load_font(size: int, bold: bool = False):
-    from PIL import ImageFont
-    names = [
-        r"C:\Windows\Fonts\msyhbd.ttc" if bold else r"C:\Windows\Fonts\msyh.ttc",
-        r"C:\Windows\Fonts\msyh.ttc",
-        r"C:\Windows\Fonts\simhei.ttf",
-        r"C:\Windows\Fonts\arial.ttf",
-    ]
-    for p in names:
-        if Path(p).exists():
-            try:
-                return ImageFont.truetype(p, size)
-            except OSError:
-                continue
-    return ImageFont.load_default()
-
-
-def _arrow(draw, p1, p2, color, width: int, scale: int) -> None:
-    draw.line([p1, p2], fill=color, width=width)
-    ang = math.atan2(p2[1] - p1[1], p2[0] - p1[0])
-    length = 10 * scale
-    draw.polygon([
-        p2,
-        (p2[0] - length * math.cos(ang - 0.45), p2[1] - length * math.sin(ang - 0.45)),
-        (p2[0] - length * math.cos(ang + 0.45), p2[1] - length * math.sin(ang + 0.45)),
-    ], fill=color)
-
-
-def render_png(topo: dict, output: str, show_ip: bool = True,
-               show_link_labels: bool = False, title: str | None = None,
-               layout: str = "keep", scale: int = 2) -> tuple[str, int, int]:
-    from PIL import Image, ImageDraw
-
-    devices, links, min_x, min_y, width, height = prepare(topo, layout)
-    W, H = width * scale, height * scale
-    img = Image.new("RGB", (W, H), "white")
-    draw = ImageDraw.Draw(img)
-    by_id = {d["id"]: d for d in devices}
-    canvas_title = title or topo.get("title") or ""
-    if not canvas_title or canvas_title.isdigit():
-        canvas_title = "eNSP 网络拓扑图"
-
-    def X(x):
-        return (x - min_x) * scale
-
-    def Y(y):
-        return (y - min_y) * scale
-
-    f_title = _load_font(22 * scale, True)
-    f_name = _load_font(14 * scale, True)
-    f_small = _load_font(11 * scale)
-    f_legend = _load_font(12 * scale)
-    stroke_w = max(1, int(2 * scale))
-    line_w = max(1, int(2.5 * scale))
-
-    draw.text((W / 2, 38 * scale), canvas_title, font=f_title, fill="#0f172a", anchor="mm")
-
-    # 连线（先画，压在图标下面）
-    pair_count: dict[tuple, int] = {}
-    for l in links:
-        key = tuple(sorted((l["src"], l["dst"])))
-        pair_count[key] = pair_count.get(key, 0) + 1
-    pair_seen: dict[tuple, int] = {}
-    for l in links:
-        a, b = by_id.get(l["src"]), by_id.get(l["dst"])
-        if not a or not b:
-            continue
-        dx, dy = b["x"] - a["x"], b["y"] - a["y"]
-        dist = math.hypot(dx, dy) or 1
-        ux, uy = dx / dist, dy / dist
-        key = tuple(sorted((l["src"], l["dst"])))
-        idx = pair_seen.get(key, 0)
-        pair_seen[key] = idx + 1
-        if pair_count[key] > 1:
-            off = (idx - (pair_count[key] - 1) / 2) * 12
-            ux, uy = ux - uy * off / dist, uy + ux * off / dist
-        r = 40
-        p1 = (X(a["x"] + ux * r), Y(a["y"] + uy * r))
-        p2 = (X(b["x"] - ux * r), Y(b["y"] - uy * r))
-        draw.line([p1, p2], fill="#94a3b8", width=line_w)
-        label = (l.get("label") or "").strip()
-        if show_link_labels and label and label.lower() != "copper":
-            draw.text(((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2 - 6 * scale),
-                      label, font=f_small, fill="#475569", anchor="mm",
-                      stroke_width=max(1, scale), stroke_fill="white")
-
-    # 设备
-    for d in devices:
-        style = TYPE_STYLE.get(d["type"], TYPE_STYLE["generic"])
-        fill, stroke = style["fill"], style["stroke"]
-        cx, cy = X(d["x"]), Y(d["y"])
-
-        def px(x):
-            return cx + x * scale
-
-        def py(y):
-            return cy + y * scale
-
-        kind = d["type"]
-        if kind == "router":
-            draw.ellipse([px(-26), py(-26), px(26), py(26)], fill=fill, outline=stroke, width=stroke_w)
-            _arrow(draw, (px(-15), py(-8)), (px(15), py(-8)), stroke, stroke_w, scale)
-            _arrow(draw, (px(15), py(8)), (px(-15), py(8)), stroke, stroke_w, scale)
-        elif kind == "switch":
-            draw.rounded_rectangle([px(-30), py(-22), px(30), py(22)], radius=6 * scale,
-                                   fill=fill, outline=stroke, width=stroke_w)
-            _arrow(draw, (px(-16), py(-8)), (px(16), py(-8)), stroke, stroke_w, scale)
-            _arrow(draw, (px(16), py(0)), (px(-16), py(0)), stroke, stroke_w, scale)
-            for i in range(6):
-                draw.rectangle([px(-20 + i * 8), py(8), px(-15 + i * 8), py(14)], fill=stroke)
-        elif kind == "pc":
-            draw.rectangle([px(-26), py(-26), px(26), py(10)], fill=fill, outline=stroke, width=stroke_w)
-            draw.rectangle([px(-21), py(-21), px(21), py(5)], fill="white", outline=stroke, width=max(1, int(1.5 * scale)))
-            draw.line([(px(0), py(10)), (px(0), py(20))], fill=stroke, width=max(1, int(2.5 * scale)))
-            draw.line([(px(-12), py(22)), (px(12), py(22))], fill=stroke, width=max(1, int(2.5 * scale)))
-        elif kind == "firewall":
-            draw.rectangle([px(-28), py(-24), px(28), py(24)], fill=fill, outline=stroke, width=stroke_w)
-            for yy in (-14, -2, 10):
-                draw.line([(px(-26), py(yy)), (px(26), py(yy))], fill=stroke, width=max(1, scale))
-            for xx in (-10, 10):
-                draw.line([(px(xx), py(-24)), (px(xx), py(24))], fill=stroke, width=max(1, scale))
-        elif kind == "cloud":
-            for box in ((-30, -8, 0, 20), (-15, -22, 15, 12), (0, -8, 30, 20)):
-                draw.ellipse([px(box[0]), py(box[1]), px(box[2]), py(box[3])],
-                             fill=fill, outline=stroke, width=stroke_w)
-        elif kind == "server":
-            draw.rectangle([px(-28), py(-26), px(28), py(26)], fill=fill, outline=stroke, width=stroke_w)
-            for i in range(4):
-                draw.rounded_rectangle([px(-22), py(-20 + i * 12), px(22), py(-12 + i * 12)],
-                                       radius=2 * scale, fill="white", outline=stroke, width=max(1, scale))
-        else:
-            draw.rounded_rectangle([px(-28), py(-24), px(28), py(24)], radius=8 * scale,
-                                   fill=fill, outline=stroke, width=stroke_w)
-
-        draw.text((cx, py(52)), d["name"] or d["id"], font=f_name, fill="#0f172a", anchor="mm")
-        if d.get("model"):
-            draw.text((cx, py(69)), d["model"], font=f_small, fill="#64748b", anchor="mm")
-        if show_ip and d.get("ip"):
-            draw.text((cx, py(85)), d["ip"], font=f_small, fill="#2563eb", anchor="mm")
-
-    # 图例：底部横向排列，超出宽度自动换行
-    used = sorted({d["type"] for d in devices})
-    slot = 118 * scale
-    per_row = max(1, int((W - 48 * scale) // slot))
-    rows = [used[i:i + per_row] for i in range(0, len(used), per_row)] or [[]]
-    y0 = H - 30 * scale - (len(rows) - 1) * 24 * scale
-    draw.text((24 * scale, y0 - 18 * scale), "图例", font=f_legend, fill="#334155", anchor="lm")
-    for r, row in enumerate(rows):
-        y = y0 + r * 24 * scale
-        for i, t in enumerate(row):
-            st = TYPE_STYLE.get(t, TYPE_STYLE["generic"])
-            x = 24 * scale + i * slot
-            draw.rounded_rectangle([x, y - 7 * scale, x + 14 * scale, y + 7 * scale],
-                                   radius=3 * scale, fill=st["fill"], outline=st["stroke"],
-                                   width=max(1, int(1.5 * scale)))
-            count = sum(1 for d in devices if d["type"] == t)
-            draw.text((x + 22 * scale, y), f'{st["label"]} ({count})',
-                      font=f_legend, fill="#334155", anchor="lm")
-
-    draw.text((W - 24 * scale, 40 * scale),
-              f"设备 {len(devices)} 台 · 链路 {len(links)} 条",
-              font=f_small, fill="#94a3b8", anchor="rm")
-
-    out = Path(output)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    img.save(str(out), format="PNG")
-    return str(out), W, H
-
-
 def render_to_file(topo: dict, output: str, layout: str = "keep",
                    show_ip: bool = True, show_link_labels: bool = False,
                    title: str | None = None) -> dict:
     out = Path(output)
     fmt = out.suffix.lower().lstrip(".")
-    if fmt == "png":
-        final, width, height = render_png(topo, str(out), show_ip=show_ip,
-                                          show_link_labels=show_link_labels,
-                                          title=title, layout=layout)
-    else:
-        svg, width, height = render_svg(topo, show_ip=show_ip,
-                                        show_link_labels=show_link_labels,
-                                        title=title, layout=layout)
-        final = save_svg(svg, out)
+    if fmt not in ("", "svg"):
+        raise ValueError("只支持 .svg 输出（PNG 导出已移除）")
+    svg, width, height = render_svg(topo, show_ip=show_ip,
+                                    show_link_labels=show_link_labels,
+                                    title=title, layout=layout)
+    final = save_svg(svg, out)
     return {
         "output": final,
         "format": fmt or "svg",
@@ -638,9 +466,9 @@ def to_mermaid(topo: dict) -> str:
 # ---------------------------------------------------------------- CLI
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="把 eNSP .topo 自动画成 SVG/PNG")
+    ap = argparse.ArgumentParser(description="把 eNSP .topo 自动画成 SVG")
     ap.add_argument("input", help=".topo 文件或 .json 文件")
-    ap.add_argument("-o", "--output", help="输出文件，扩展名决定格式（.svg/.png）")
+    ap.add_argument("-o", "--output", help="输出 SVG 文件（.svg）")
     ap.add_argument("--layout", choices=["keep", "auto"], default="keep",
                     help="keep 用 .topo 里的原坐标，auto 重新分层布局")
     ap.add_argument("--no-ip", action="store_true", help="不显示 PC/服务器 IP")
@@ -654,7 +482,7 @@ def main(argv=None):
     else:
         topo = parse_topo(src)
     base = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
-    output = args.output or str(base / "out" / (src.stem + ".png"))
+    output = args.output or str(base / "out" / (src.stem + ".svg"))
     result = render_to_file(topo, output, layout=args.layout,
                             show_ip=not args.no_ip,
                             show_link_labels=args.link_labels,
