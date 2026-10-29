@@ -42,7 +42,7 @@ powershell -ExecutionPolicy Bypass -File build64.ps1
 
 首次构建会把 Python 运行时下载到 `build32\toolchain\py311-32` 或 `toolchain\py311-64`，依赖见 `build32\requirements32.txt`。产物分别是 `build32\dist\eNSP-MCP.exe` 和 `dist64\eNSP-MCP.exe`。
 
-国内网络如果 python.org 下载卡住，可以手动把对应 embeddable zip 放到脚本预期位置，脚本会跳过下载。
+国内网络如果 python.org 下载卡住，脚本会自动切到华为云镜像；也可以手动把对应 embeddable zip 放到脚本预期位置，脚本会跳过下载。
 
 ## 生成拓扑的 JSON 示例
 
